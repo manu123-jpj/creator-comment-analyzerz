@@ -56,7 +56,7 @@ def extract_video_id(url):
 st.title("🚀 Creator Comment Analyzer (AI + YouTube)")
 
 video_url = st.text_input("📺 Paste YouTube Video Link:")
-api_key = st.text_input("🔑 Enter YouTube API Key:", type="password")
+api_key = st.secrets["API_KEY"]
 
 comments_input = st.text_area("✍️ Or paste comments manually (one per line):")
 
