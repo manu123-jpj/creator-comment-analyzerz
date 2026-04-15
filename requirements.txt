@@ -3,3 +3,4 @@ matplotlib
 google-api-python-client
 transformers
 torch
+torchvision
