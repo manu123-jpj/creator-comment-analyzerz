@@ -1,0 +1,5 @@
+streamlit
+matplotlib
+google-api-python-client
+transformers
+torch
