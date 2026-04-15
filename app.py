@@ -5,10 +5,10 @@ from googleapiclient.discovery import build
 import re
 from transformers import pipeline
 
-# 🔥 Load AI model (only loads once)
+# 🔥 Load AI model
 sentiment_model = pipeline("sentiment-analysis")
 
-# 🔹 Function to fetch YouTube comments
+# 🔹 Get YouTube comments
 def get_youtube_comments(video_id, api_key, max_comments=200):
     youtube = build('youtube', 'v3', developerKey=api_key)
 
@@ -30,7 +30,6 @@ def get_youtube_comments(video_id, api_key, max_comments=200):
             comments.append(comment)
 
         next_page_token = response.get('nextPageToken')
-
         if not next_page_token:
             break
 
@@ -43,29 +42,42 @@ def extract_video_id(url):
         r"youtu\.be/([^?&]+)",
         r"shorts/([^?&]+)"
     ]
-
     for pattern in patterns:
         match = re.search(pattern, url)
         if match:
             return match.group(1)
-
     return None
 
 
-# 🚀 UI
-st.title("🚀 Creator Comment Analyzer (AI + YouTube)")
+# 🎨 UI CONFIG
+st.set_page_config(page_title="Creator AI Analyzer", layout="wide")
 
-video_url = st.text_input("📺 Paste YouTube Video Link:")
+st.title("🚀 Creator AI Analyzer")
+st.markdown("### Understand your audience. Improve your content. Grow faster 🔥")
+
+st.divider()
+
+# 🔐 Hidden API key
 api_key = st.secrets["API_KEY"]
 
-comments_input = st.text_area("✍️ Or paste comments manually (one per line):")
+# 📥 INPUT SECTION
+with st.container():
+    st.subheader("📥 Input")
 
-max_comments = st.slider("Number of comments to analyze", 50, 500, 200)
+    col1, col2 = st.columns(2)
 
+    with col1:
+        video_url = st.text_input("📺 YouTube Video Link")
+
+    with col2:
+        max_comments = st.slider("📊 Number of comments", 50, 500, 200)
+
+    comments_input = st.text_area("✍️ Or paste comments manually")
+
+# 🚀 ANALYZE
 if st.button("Analyze Comments"):
 
-    # 🔹 Choose source
-    if video_url and api_key:
+    if video_url:
         video_id = extract_video_id(video_url)
 
         if video_id:
@@ -81,7 +93,6 @@ if st.button("Analyze Comments"):
         all_words = []
 
         for comment in comments:
-            # 🔥 AI SENTIMENT
             result = sentiment_model(comment[:512])[0]
             label = result['label']
 
@@ -92,32 +103,29 @@ if st.button("Analyze Comments"):
             else:
                 neutral += 1
 
-            # 🔹 Clean words
             words = re.findall(r'\b[a-zA-Z]{4,}\b', comment.lower())
             all_words.extend(words)
 
         total = len(comments)
 
-        # 📊 Results
-        st.subheader("📊 Results")
-        st.write(f"Total Comments: {total}")
-        st.write(f"Positive: {positive}")
-        st.write(f"Negative: {negative}")
-        st.write(f"Neutral: {neutral}")
+        # 📊 RESULTS UI
+        st.subheader("📊 Analysis Results")
 
-        # 📊 Pie Chart
-        st.subheader("📊 Sentiment Distribution")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("😊 Positive", positive)
+        col2.metric("😡 Negative", negative)
+        col3.metric("😐 Neutral", neutral)
 
+        # 📊 PIE CHART
         labels = ['Positive', 'Negative', 'Neutral']
         sizes = [positive, negative, neutral]
 
         fig1, ax1 = plt.subplots()
         ax1.pie(sizes, labels=labels, autopct='%1.1f%%')
         ax1.axis('equal')
-
         st.pyplot(fig1)
 
-        # 🔥 Keywords
+        # 🔥 KEYWORDS
         st.subheader("🔥 Top Keywords")
         word_counts = Counter(all_words)
         common_words = word_counts.most_common(5)
@@ -125,9 +133,7 @@ if st.button("Analyze Comments"):
         for word, count in common_words:
             st.write(f"{word} : {count}")
 
-        # 📊 Bar Chart
-        st.subheader("📊 Keyword Frequency")
-
+        # 📊 BAR CHART
         words = [w for w, c in common_words]
         counts = [c for w, c in common_words]
 
@@ -135,38 +141,45 @@ if st.button("Analyze Comments"):
         ax2.bar(words, counts)
         st.pyplot(fig2)
 
-        # 💡 Insight
-        st.subheader("💡 Insight")
-        if positive > negative:
-            st.success("Audience is liking your content 👍")
-        elif negative > positive:
-            st.error("Audience is not happy 😬 Improve content")
-        else:
-            st.info("Mixed response 😐 Try experimenting")
+        # 💡 SMART INSIGHTS
+        st.subheader("💡 Smart Insights")
 
-        # 🚀 Content Suggestions
-        st.subheader("🚀 Content Suggestions")
+        if positive > negative:
+            st.success("🔥 Your audience LOVES this content style. Keep doing similar videos!")
+        elif negative > positive:
+            st.error("⚠️ Audience is not satisfied. Improve quality or topic selection.")
+        else:
+            st.info("🤔 Mixed reactions. Try experimenting with new ideas.")
+
+        # 🚀 CONTENT STRATEGY
+        st.subheader("🚀 Content Strategy Suggestions")
 
         top_words = [word for word, count in common_words]
 
         if top_words:
-            st.write(f"👉 People are talking about: {', '.join(top_words)}")
+            st.write(f"📌 Audience is talking about: {', '.join(top_words)}")
 
         if any("edit" in word for word in top_words):
-            st.write("👉 Improve or maintain your editing style.")
+            st.write("🎬 Improve or maintain strong editing style")
 
         if any("audio" in word for word in top_words):
-            st.write("👉 Improve audio quality.")
+            st.write("🔊 Improve audio clarity")
 
-        if any("content" in word for word in top_words):
-            st.write("👉 Maintain content consistency.")
+        if any("boring" in word for word in top_words):
+            st.write("⚡ Make content more engaging and fast-paced")
 
-        if positive > negative:
-            st.success("👉 Continue this type of content 👍")
-        elif negative > positive:
-            st.error("👉 Improve your content quality")
+        if any("good" in word or "great" in word for word in top_words):
+            st.write("🔥 Audience is impressed — repeat this format")
+
+        # 🎯 FINAL AI RECOMMENDATION
+        if positive > 70:
+            st.success("🚀 High engagement content — scale this style!")
+        elif negative > 50:
+            st.error("❗ Improve content quality immediately")
         else:
-            st.info("👉 Try experimenting with new content ideas")
+            st.info("👉 Try new formats or topics to grow faster")
 
     else:
         st.warning("No comments found")
+
+
