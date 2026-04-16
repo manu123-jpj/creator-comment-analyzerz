@@ -5,13 +5,12 @@ from googleapiclient.discovery import build
 import re
 from transformers import pipeline
 
-# ⚡ Faster model
+# ⚡ Fast AI model
 sentiment_model = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
 # 🔹 YouTube comments
 def get_youtube_comments(video_id, api_key, max_comments=200):
     youtube = build('youtube', 'v3', developerKey=api_key)
-
     comments = []
     next_page_token = None
 
@@ -47,33 +46,53 @@ def extract_video_id(url):
             return match.group(1)
     return None
 
-# 🎨 UI
-st.set_page_config(page_title="Creator AI Analyzer", layout="wide")
+# 🎨 PAGE CONFIG
+st.set_page_config(page_title="Creator AI Dashboard", layout="wide")
 
-st.title("🚀 Creator AI Analyzer")
-st.markdown("Analyze audience sentiment & predict performance 🔥")
+# 🎨 SIDEBAR
+st.sidebar.title("🚀 Creator AI")
+st.sidebar.markdown("### Dashboard Menu")
+st.sidebar.info("Analyze audience & grow faster")
 
+# 🔐 API key
 api_key = st.secrets["API_KEY"]
 
-video_url = st.text_input("📺 YouTube Video Link")
-max_comments = st.slider("📊 Number of comments", 50, 500, 200)
+# 🎯 HEADER
+st.markdown("""
+<h1 style='text-align: center;'>🚀 Creator AI Dashboard</h1>
+<p style='text-align: center;'>AI-powered audience insights & viral prediction</p>
+""", unsafe_allow_html=True)
 
-# 🚀 Analyze
-if st.button("Analyze Comments"):
+st.divider()
+
+# 📥 INPUT SECTION (CARD STYLE)
+with st.container():
+    st.markdown("### 📥 Input")
+
+    col1, col2 = st.columns([2,1])
+
+    with col1:
+        video_url = st.text_input("📺 YouTube Video Link")
+
+    with col2:
+        max_comments = st.slider("📊 Comments", 50, 500, 200)
+
+# 🚀 ANALYZE BUTTON
+if st.button("🚀 Analyze Comments"):
 
     video_id = extract_video_id(video_url)
 
     if video_id:
         comments = get_youtube_comments(video_id, api_key, max_comments)
     else:
-        st.error("Invalid link ❌")
+        st.error("Invalid YouTube link ❌")
         comments = []
 
     if comments:
-        positive = negative = neutral = 0
-        all_words = []
+        positive = negative = 0
         pos_comments = []
         neg_comments = []
+        all_words = []
 
         for comment in comments:
             result = sentiment_model(comment[:512])[0]
@@ -90,63 +109,80 @@ if st.button("Analyze Comments"):
             all_words.extend(words)
 
         total = len(comments)
+        positive_percent = (positive / total) * 100
 
-        # 📊 Metrics
+        # 📊 METRICS CARDS
+        st.markdown("## 📊 Performance Overview")
         col1, col2 = st.columns(2)
         col1.metric("😊 Positive", positive)
         col2.metric("😡 Negative", negative)
 
-        # 🔥 VIRAL PREDICTION
-        st.subheader("🔥 Viral Prediction")
-
-        positive_percent = (positive / total) * 100
+        # 🔥 VIRAL CARD
+        st.markdown("## 🔥 Viral Prediction")
 
         if positive_percent > 70:
-            st.success("🚀 High chance of going viral!")
+            st.success("🚀 High viral potential")
         elif positive_percent > 50:
-            st.info("👍 Good engagement potential")
+            st.info("👍 Good engagement")
         else:
-            st.error("⚠️ Low engagement expected")
+            st.error("⚠️ Needs improvement")
 
-        # 💬 TOP COMMENTS
-        st.subheader("💬 Top Comments Insights")
+        # 💬 TOP COMMENTS (CARDS)
+        st.markdown("## 💬 Top Insights")
 
-        if pos_comments:
-            st.write("🔥 Most Positive Comment:")
-            st.success(pos_comments[0])
+        col1, col2 = st.columns(2)
 
-        if neg_comments:
-            st.write("⚠️ Most Negative Comment:")
-            st.error(neg_comments[0])
+        with col1:
+            if pos_comments:
+                st.success(pos_comments[0])
 
-        # 🔥 Keywords
-        st.subheader("🔥 Keywords")
+        with col2:
+            if neg_comments:
+                st.error(neg_comments[0])
+
+        # 💬 FULL BREAKDOWN
+        st.markdown("## 💬 Comment Breakdown")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("### 😊 Positive")
+            for c in pos_comments[:5]:
+                st.success(c)
+
+        with col2:
+            st.markdown("### 😡 Negative")
+            for c in neg_comments[:5]:
+                st.error(c)
+
+        # 🔥 KEYWORDS
+        st.markdown("## 🔥 Audience Keywords")
+
         word_counts = Counter(all_words)
         common_words = word_counts.most_common(5)
 
         for word, count in common_words:
-            st.write(f"{word}: {count}")
+            st.write(f"🔹 {word}: {count}")
 
-        # 📊 Chart
-        labels = ['Positive', 'Negative']
-        sizes = [positive, negative]
+        # 📊 PIE CHART
+        st.markdown("## 📊 Sentiment Distribution")
 
         fig, ax = plt.subplots()
-        ax.pie(sizes, labels=labels, autopct='%1.1f%%')
+        ax.pie([positive, negative], labels=["Positive", "Negative"], autopct='%1.1f%%')
         st.pyplot(fig)
 
-        # 📄 DOWNLOAD REPORT
-        st.subheader("📄 Download Report")
+        # 📄 DOWNLOAD
+        st.markdown("## 📄 Export Report")
 
         report = f"""
 Total Comments: {total}
 Positive: {positive}
 Negative: {negative}
-Top Keywords: {common_words}
 Viral Score: {round(positive_percent,2)}%
+Top Keywords: {common_words}
 """
 
-        st.download_button("📥 Download Report", report, file_name="analysis.txt")
+        st.download_button("⬇️ Download Report", report, file_name="report.txt")
 
     else:
         st.warning("No comments found")
