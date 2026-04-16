@@ -59,8 +59,9 @@ api_key = st.secrets["API_KEY"]
 
 # 🎯 HEADER
 st.markdown("""
-<h1 style='text-align: center;'>🚀 Creator AI Dashboard</h1>
-<p style='text-align: center;'>AI-powered audience insights & viral prediction</p>
+<h1 style='text-align: center;'>🔥 Comment Analyzer Pro</h1>
+<p style='text-align: center; font-size:18px;'>AI-powered insights for smarter content creation</p>
+<p style='text-align: center; font-size:14px; color:gray;'>™ Manu's</p>
 """, unsafe_allow_html=True)
 
 st.divider()
