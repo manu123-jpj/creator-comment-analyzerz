@@ -5,10 +5,10 @@ from googleapiclient.discovery import build
 import re
 from transformers import pipeline
 
-# 🔥 Load AI model
-sentiment_model = pipeline("sentiment-analysis")
+# ⚡ Faster model
+sentiment_model = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
-# 🔹 Get YouTube comments
+# 🔹 YouTube comments
 def get_youtube_comments(video_id, api_key, max_comments=200):
     youtube = build('youtube', 'v3', developerKey=api_key)
 
@@ -22,7 +22,6 @@ def get_youtube_comments(video_id, api_key, max_comments=200):
             maxResults=50,
             pageToken=next_page_token
         )
-
         response = request.execute()
 
         for item in response['items']:
@@ -48,49 +47,33 @@ def extract_video_id(url):
             return match.group(1)
     return None
 
-
-# 🎨 UI CONFIG
+# 🎨 UI
 st.set_page_config(page_title="Creator AI Analyzer", layout="wide")
 
 st.title("🚀 Creator AI Analyzer")
-st.markdown("### Understand your audience. Improve your content. Grow faster 🔥")
+st.markdown("Analyze audience sentiment & predict performance 🔥")
 
-st.divider()
-
-# 🔐 Hidden API key
 api_key = st.secrets["API_KEY"]
 
-# 📥 INPUT SECTION
-with st.container():
-    st.subheader("📥 Input")
+video_url = st.text_input("📺 YouTube Video Link")
+max_comments = st.slider("📊 Number of comments", 50, 500, 200)
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        video_url = st.text_input("📺 YouTube Video Link")
-
-    with col2:
-        max_comments = st.slider("📊 Number of comments", 50, 500, 200)
-
-    comments_input = st.text_area("✍️ Or paste comments manually")
-
-# 🚀 ANALYZE
+# 🚀 Analyze
 if st.button("Analyze Comments"):
 
-    if video_url:
-        video_id = extract_video_id(video_url)
+    video_id = extract_video_id(video_url)
 
-        if video_id:
-            comments = get_youtube_comments(video_id, api_key, max_comments)
-        else:
-            st.error("Invalid YouTube link ❌")
-            comments = []
+    if video_id:
+        comments = get_youtube_comments(video_id, api_key, max_comments)
     else:
-        comments = comments_input.split("\n")
+        st.error("Invalid link ❌")
+        comments = []
 
     if comments:
         positive = negative = neutral = 0
         all_words = []
+        pos_comments = []
+        neg_comments = []
 
         for comment in comments:
             result = sentiment_model(comment[:512])[0]
@@ -98,88 +81,72 @@ if st.button("Analyze Comments"):
 
             if label == "POSITIVE":
                 positive += 1
-            elif label == "NEGATIVE":
-                negative += 1
+                pos_comments.append(comment)
             else:
-                neutral += 1
+                negative += 1
+                neg_comments.append(comment)
 
             words = re.findall(r'\b[a-zA-Z]{4,}\b', comment.lower())
             all_words.extend(words)
 
         total = len(comments)
 
-        # 📊 RESULTS UI
-        st.subheader("📊 Analysis Results")
-
-        col1, col2, col3 = st.columns(3)
+        # 📊 Metrics
+        col1, col2 = st.columns(2)
         col1.metric("😊 Positive", positive)
         col2.metric("😡 Negative", negative)
-        col3.metric("😐 Neutral", neutral)
 
-        # 📊 PIE CHART
-        labels = ['Positive', 'Negative', 'Neutral']
-        sizes = [positive, negative, neutral]
+        # 🔥 VIRAL PREDICTION
+        st.subheader("🔥 Viral Prediction")
 
-        fig1, ax1 = plt.subplots()
-        ax1.pie(sizes, labels=labels, autopct='%1.1f%%')
-        ax1.axis('equal')
-        st.pyplot(fig1)
+        positive_percent = (positive / total) * 100
 
-        # 🔥 KEYWORDS
-        st.subheader("🔥 Top Keywords")
+        if positive_percent > 70:
+            st.success("🚀 High chance of going viral!")
+        elif positive_percent > 50:
+            st.info("👍 Good engagement potential")
+        else:
+            st.error("⚠️ Low engagement expected")
+
+        # 💬 TOP COMMENTS
+        st.subheader("💬 Top Comments Insights")
+
+        if pos_comments:
+            st.write("🔥 Most Positive Comment:")
+            st.success(pos_comments[0])
+
+        if neg_comments:
+            st.write("⚠️ Most Negative Comment:")
+            st.error(neg_comments[0])
+
+        # 🔥 Keywords
+        st.subheader("🔥 Keywords")
         word_counts = Counter(all_words)
         common_words = word_counts.most_common(5)
 
         for word, count in common_words:
-            st.write(f"{word} : {count}")
+            st.write(f"{word}: {count}")
 
-        # 📊 BAR CHART
-        words = [w for w, c in common_words]
-        counts = [c for w, c in common_words]
+        # 📊 Chart
+        labels = ['Positive', 'Negative']
+        sizes = [positive, negative]
 
-        fig2, ax2 = plt.subplots()
-        ax2.bar(words, counts)
-        st.pyplot(fig2)
+        fig, ax = plt.subplots()
+        ax.pie(sizes, labels=labels, autopct='%1.1f%%')
+        st.pyplot(fig)
 
-        # 💡 SMART INSIGHTS
-        st.subheader("💡 Smart Insights")
+        # 📄 DOWNLOAD REPORT
+        st.subheader("📄 Download Report")
 
-        if positive > negative:
-            st.success("🔥 Your audience LOVES this content style. Keep doing similar videos!")
-        elif negative > positive:
-            st.error("⚠️ Audience is not satisfied. Improve quality or topic selection.")
-        else:
-            st.info("🤔 Mixed reactions. Try experimenting with new ideas.")
+        report = f"""
+Total Comments: {total}
+Positive: {positive}
+Negative: {negative}
+Top Keywords: {common_words}
+Viral Score: {round(positive_percent,2)}%
+"""
 
-        # 🚀 CONTENT STRATEGY
-        st.subheader("🚀 Content Strategy Suggestions")
-
-        top_words = [word for word, count in common_words]
-
-        if top_words:
-            st.write(f"📌 Audience is talking about: {', '.join(top_words)}")
-
-        if any("edit" in word for word in top_words):
-            st.write("🎬 Improve or maintain strong editing style")
-
-        if any("audio" in word for word in top_words):
-            st.write("🔊 Improve audio clarity")
-
-        if any("boring" in word for word in top_words):
-            st.write("⚡ Make content more engaging and fast-paced")
-
-        if any("good" in word or "great" in word for word in top_words):
-            st.write("🔥 Audience is impressed — repeat this format")
-
-        # 🎯 FINAL AI RECOMMENDATION
-        if positive > 70:
-            st.success("🚀 High engagement content — scale this style!")
-        elif negative > 50:
-            st.error("❗ Improve content quality immediately")
-        else:
-            st.info("👉 Try new formats or topics to grow faster")
+        st.download_button("📥 Download Report", report, file_name="analysis.txt")
 
     else:
         st.warning("No comments found")
-
-
